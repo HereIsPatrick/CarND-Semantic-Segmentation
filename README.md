@@ -1,6 +1,20 @@
 # Semantic Segmentation
+
+[image1]: images/1.png
+[image2]: images/2.png 
+[image3]: images/3.png 
+[image4]: images/4.png 
+[image5]: images/5.png
+[image6]: images/6.png 
+[image7]: images/7.png 
+[image8]: images/8.png
+ 
 ### Introduction
-In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
+In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN). To construct Semantic Segmentation(Fully convolutional networks base on VGG16, use transfer learning that reduce training time.
+
+### Demo Video
+[![Path Planning](http://img.youtube.com/vi/eDj3TE-x6-w/0.jpg)](https://www.youtube.com/watch?v=eDj3TE-x6-w
+ "Semantic Segmentation")
 
 ### Setup
 ##### GPU
@@ -13,6 +27,82 @@ Make sure you have the following is installed:
  - [SciPy](https://www.scipy.org/)
 ##### Dataset
 Download the [Kitti Road dataset](http://www.cvlibs.net/datasets/kitti/eval_road.php) from [here](http://www.cvlibs.net/download.php?file=data_road.zip).  Extract the dataset in the `data` folder.  This will create the folder `data_road` with all the training a test images.
+
+### Convolutional network architecture and code
+The code(main.py) download pre trained VGG16 model, get the input layer, keep parameter of layer 3, 4 and 7. You can see convolution network layer define as below. 
+
+	# Step. 1x1 convolution of vgg layer 7
+    layer7a_out = tf.layers.conv2d(vgg_layer7_out,
+                                   num_classes,
+                                   1, # kernel size
+                                   padding= 'same',
+                                   kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                   kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+    # Step. upsample
+    layer4a_in1 = tf.layers.conv2d_transpose(layer7a_out,
+                                             num_classes,
+                                             4, # kernel size
+                                             strides= (2, 2),
+                                             padding= 'same',
+                                             kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                             kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+    # Step. 1x1 convolution of vgg layer 4
+    layer4a_in2 = tf.layers.conv2d(vgg_layer4_out,
+                                   num_classes,
+                                   1, # kernel size
+                                   padding= 'same',
+                                   kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                   kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+    # Step. Skip layer
+    layer4a_out = tf.add(layer4a_in1, layer4a_in2)
+    # upsample
+    layer3a_in1 = tf.layers.conv2d_transpose(layer4a_out, num_classes,
+                                             4,
+                                             strides= (2, 2),
+                                             padding= 'same',
+                                             kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                             kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+    # Step. 1x1 convolution of vgg layer 3
+    layer3a_in2 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1,
+                                   padding= 'same',
+                                   kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                   kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+    # Step. Skip connection
+    layer3a_out = tf.add(layer3a_in1, layer3a_in2)
+
+    # Step. Deconvolution
+    last_layer = tf.layers.conv2d_transpose(layer3a_out, num_classes, 16,
+                                               strides= (8, 8),
+                                               padding= 'same',
+                                               kernel_initializer= tf.random_normal_initializer(stddev=weight_stddev),
+                                               kernel_regularizer= tf.contrib.layers.l2_regularizer(weight_regularized))
+
+Optimize use Adam optimizer.
+
+### Traing Parameter
+- keep_prob:0.5
+-  learning_rate: 0.0001
+-  epochs: 80
+-  batch_size: 5
+
+### Training Result
+The model decrease loss over time
+
+- 10 epochs: 0.087
+- 20 epochs: 0.063
+- 40 epochs: 0.026
+- 80 epochs: 0.007
+
+correct label the road that label at least 80% of the road, and no more than 20% of non-road pixels as road.
+
+![alt text][image1]
+![alt text][image2]
+![alt text][image3]
+![alt text][image4]
+![alt text][image5]
+![alt text][image6]
+![alt text][image7]
+![alt text][image8]
 
 ### Start
 ##### Implement
